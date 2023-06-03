@@ -1,60 +1,28 @@
-from typing import Literal, List, Optional
-import pandas as pd
-from model import get_model
 from sklearn.metrics import classification_report, multilabel_confusion_matrix
+import pickle
+import numpy as np
+import pandas as pd
+from train_classifier import Dataset
 
-class Dataset:
-    """
-    Dataset object containing data and optionally labels.
-    """
 
-    data: pd.DataFrame
-    data_ids: pd.Series
-    labels: Optional[pd.DataFrame]
-    label_names: Optional[List[str]]
-    label_ids: Optional[pd.Series]
+class Classifier:
+    def __init__(self):
+        self.model = pickle.load(open("model.p", "rb"))
 
-    def __init__(self, data: pd.DataFrame, labels: Optional[pd.DataFrame] = None):
-        self.data = data.drop('Argument ID', axis=1)
-        self.data_ids = data['Argument ID']
-        if labels is not None:
-            self.labels = labels.drop('Argument ID', axis=1)
-            self.label_names = self.labels.columns.to_list()
-            self.label_ids = labels['Argument ID']
+    def format_as_dataset(self, text):
+        textdf = pd.DataFrame(columns=["Argument ID", "Merged"])
+        textdf.loc[0] = [1,text]
+        return Dataset(textdf)
 
-    @property
-    def has_labels(self):
-        """
-        Indicates whether this dataset has labels or not
-        """
-        return self.labels is not None
+    def classify(self, text):
+        textdf = pd.DataFrame(columns=["Argument ID", "Merged"])
+        textdf.loc[0] = [1,text]
+        textdata = Dataset(textdf)
 
-def load_dataset(dataset_type: Literal['training', 'validation', 'test']) -> Dataset:
-    """
-    Load a dataset
-    """
-    return Dataset(
-        pd.read_csv(f'datasets/arguments-{dataset_type}.tsv', sep='\t'),
-        pd.read_csv(f'datasets/labels-{dataset_type}.tsv', sep='\t')
-            if dataset_type != 'test'
-            else None
-        )
+        prediction = self.model.predict(textdata.data)
+        return prediction
 
-def main():
-    """
-    Run the program
-    """
-    train_dataset = load_dataset('training')
-    model = get_model() \
-        .fit(train_dataset.data, train_dataset.labels)
-
-    validation_dataset = load_dataset('validation')
-    validation_predictions = model.predict(validation_dataset.data)
-    print(classification_report(
-        validation_dataset.labels,
-        validation_predictions,
-        target_names=validation_dataset.label_names
-        ))
 
 if __name__ == '__main__':
-    main()
+    classifier = Classifier()
+    classifier.classify("We should end racial profiling racial profiling is a preconceived idea of people that views an entire race as criminal")
