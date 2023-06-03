@@ -1,6 +1,6 @@
 from typing import Literal, List, Optional
 import pandas as pd
-from model import get_model
+from model_onecol import get_model
 from sklearn.metrics import classification_report, multilabel_confusion_matrix
 import pickle
 
@@ -34,9 +34,18 @@ def load_dataset(dataset_type: Literal['training', 'validation', 'test']) -> Dat
     """
     Load a dataset
     """
+    arguments = pd.read_csv(f'datasets/arguments-{dataset_type}.tsv', sep='\t')
+    labels = pd.read_csv(f'datasets/labels-{dataset_type}.tsv', sep='\t')
+
+    arguments["Merged"] = arguments["Premise"] + arguments["Conclusion"]
+    arguments = arguments.loc[:, arguments.columns!='Stance']
+    arguments = arguments.loc[:, arguments.columns!='Premise']
+    arguments = arguments.loc[:, arguments.columns!='Conclusion']
+
+
     return Dataset(
-        pd.read_csv(f'datasets/arguments-{dataset_type}.tsv', sep='\t'),
-        pd.read_csv(f'datasets/labels-{dataset_type}.tsv', sep='\t')
+        arguments,
+        labels
             if dataset_type != 'test'
             else None
         )
@@ -46,10 +55,14 @@ def main():
     Run the program
     """
     train_dataset = load_dataset('training')
-    model = get_model() \
-        .fit(train_dataset.data, train_dataset.labels)
+    model = get_model().fit(train_dataset.data, train_dataset.labels)
+
 
     validation_dataset = load_dataset('validation')
+
+    z = validation_dataset.data.merge(validation_dataset.labels, left_index=True, right_index=True)
+    z.to_csv("datasets/validation_merged.csv")
+
     validation_predictions = model.predict(validation_dataset.data)
     print(classification_report(
         validation_dataset.labels,
@@ -58,6 +71,9 @@ def main():
         ))
     
     pickle.dump(model, open("model.p", "wb"))
+
+    print(validation_dataset.data)
+
 
 if __name__ == '__main__':
     main()
