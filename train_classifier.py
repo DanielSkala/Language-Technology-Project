@@ -2,6 +2,7 @@ from typing import Literal, List, Optional
 import pandas as pd
 from model import get_model
 from sklearn.metrics import classification_report, multilabel_confusion_matrix
+import pickle
 
 class Dataset:
     """
@@ -55,6 +56,8 @@ def main():
         validation_predictions,
         target_names=validation_dataset.label_names
         ))
+    
+    pickle.dump(model, open("model.p", "wb"))
 
 if __name__ == '__main__':
     main()
